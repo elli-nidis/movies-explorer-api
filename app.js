@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 const { PORT = 3000, DATABASE } = process.env;
 const mongoose = require('mongoose');
@@ -15,8 +16,14 @@ const { requestLogger, errorLogger } = require('./middlewares/logger');
 
 const app = express();
 
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+
 app.use(helmet());
 app.use(cors({ origin: ['http://localhost:3000'], credentials: true }));
+app.use(limiter);
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(requestLogger);
