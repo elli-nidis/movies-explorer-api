@@ -3,11 +3,17 @@ const ForbiddenError = require('../errors/forbiddenError');
 const NotFoundError = require('../errors/notFoundError');
 const InternalServerError = require('../errors/InternalServerError');
 const BadRequestError = require('../errors/badRequestError');
+const {
+  forbiddenMessage,
+  notFoundMessage,
+  internalServerMessage,
+  badRequestMessage,
+} = require('../utils/constants');
 
-const forbiddenError = new ForbiddenError('Вы не можете произвести это действие');
-const notFoundError = new NotFoundError('Запрашиваемые данные не найдены');
-const internalServerError = new InternalServerError('Произошла ошибка');
-const badRequestError = new BadRequestError('Переданы некорректные данные');
+const forbiddenError = new ForbiddenError(forbiddenMessage);
+const notFoundError = new NotFoundError(notFoundMessage);
+const internalServerError = new InternalServerError(internalServerMessage);
+const badRequestError = new BadRequestError(badRequestMessage);
 
 function getMovies(req, res, next) {
   const currentUser = req.user._id;

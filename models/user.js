@@ -3,8 +3,9 @@ const bcrypt = require('bcryptjs');
 const validator = require('validator');
 
 const BadRequestError = require('../errors/badRequestError');
+const { badRequestMessage } = require('../utils/constants');
 
-const badRequestError = new BadRequestError('Неправильные почта или пароль');
+const badRequestError = new BadRequestError(badRequestMessage);
 
 const userSchema = new mongoose.Schema({
   name: {

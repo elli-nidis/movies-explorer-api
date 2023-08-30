@@ -1,8 +1,9 @@
 const { NODE_ENV, JWT_SECRET } = process.env;
 const jwt = require('jsonwebtoken');
 const UnauthorizedError = require('../errors/unauthorizedError');
+const { unauthorizedMessage } = require('../utils/constants');
 
-const unauthorizedError = new UnauthorizedError('Необходима авторизация');
+const unauthorizedError = new UnauthorizedError(unauthorizedMessage);
 
 function auth(req, _res, next) {
   const token = req.cookies.jwt;

@@ -9,12 +9,19 @@ const NotFoundError = require('../errors/notFoundError');
 const InternalServerError = require('../errors/InternalServerError');
 const BadRequestError = require('../errors/badRequestError');
 const ConflictError = require('../errors/conflictError');
+const {
+  unauthorizedMessage,
+  notFoundMessage,
+  internalServerMessage,
+  badRequestMessage,
+  conflictMessage,
+} = require('../utils/constants');
 
-const unauthorizedError = new UnauthorizedError('Необходима авторизация');
-const notFoundError = new NotFoundError('Запрашиваемые данные не найдены');
-const internalServerError = new InternalServerError('Произошла ошибка');
-const badRequestError = new BadRequestError('Переданы некорректные данные');
-const conflictError = new ConflictError('Пользователь с указанным email уже зарегистрирован');
+const unauthorizedError = new UnauthorizedError(unauthorizedMessage);
+const notFoundError = new NotFoundError(notFoundMessage);
+const internalServerError = new InternalServerError(internalServerMessage);
+const badRequestError = new BadRequestError(badRequestMessage);
+const conflictError = new ConflictError(conflictMessage);
 
 function getCurrentUser(req, res, next) {
   const { _id } = req.user;
