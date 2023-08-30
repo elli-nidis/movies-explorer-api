@@ -3,7 +3,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 
-const { PORT = 3000 } = process.env;
+const { PORT = 3000, DATABASE } = process.env;
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const { errors } = require('celebrate');
@@ -24,7 +24,7 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(requestLogger);
 
-mongoose.connect('mongodb://127.0.0.1:27017/bitfilmsdb');
+mongoose.connect(DATABASE);
 
 app.use('/signup', require('./routes/signup'));
 app.use('/signin', require('./routes/signin'));
