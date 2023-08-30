@@ -9,12 +9,9 @@ const bodyParser = require('body-parser');
 const { errors } = require('celebrate');
 const cookieParser = require('cookie-parser');
 
-const { auth } = require('./middlewares/auth');
+const routes = require('./routes/index');
 const errorHandler = require('./middlewares/errorHandler');
-const NotFoundError = require('./errors/notFoundError');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
-
-const notFoundError = new NotFoundError('Такой страницы не существует');
 
 const app = express();
 
@@ -26,13 +23,7 @@ app.use(requestLogger);
 
 mongoose.connect(DATABASE);
 
-app.use('/signup', require('./routes/signup'));
-app.use('/signin', require('./routes/signin'));
-app.use('/signout', auth, require('./routes/signout'));
-app.use('/users', auth, require('./routes/users'));
-app.use('/movies', auth, require('./routes/movies'));
-
-app.use('*', (_req, _res, next) => next(notFoundError));
+app.use('/', routes);
 
 app.use(errorLogger);
 app.use(errors());
