@@ -16,6 +16,18 @@ const internalServerError = new InternalServerError('Произошла ошиб
 const badRequestError = new BadRequestError('Переданы некорректные данные');
 const conflictError = new ConflictError('Пользователь с указанным email уже зарегистрирован');
 
+function getCurrentUser(req, res, next) {
+  const { _id } = req.user;
+
+  User.findOne({ _id })
+    .then((user) => {
+      res.send({
+        name: user.name, email: user.email,
+      });
+    })
+    .catch(() => next(internalServerError));
+}
+
 function createUser(req, res, next) {
   const {
     name, email, password,
@@ -78,19 +90,10 @@ function login(req, res, next) {
       next(unauthorizedError);
     });
 }
-
-function getCurrentUser(req, res, next) {
-  const { _id } = req.user;
-
-  User.findOne({ _id })
-    .then((user) => {
-      res.send({
-        name: user.name, email: user.email,
-      });
-    })
-    .catch(() => next(internalServerError));
+function logout(_req, res) {
+  res.clearCookie('jwt').send({ message: 'Осуществлен выход из профиля' });
 }
 
 module.exports = {
-  createUser, updateUser, login, getCurrentUser,
+  getCurrentUser, createUser, updateUser, login, logout,
 };

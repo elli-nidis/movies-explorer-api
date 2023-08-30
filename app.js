@@ -6,13 +6,11 @@ const cors = require('cors');
 const { PORT = 3000 } = process.env;
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-const { celebrate, Joi, errors } = require('celebrate');
+const { errors } = require('celebrate');
 const cookieParser = require('cookie-parser');
 
-// const { auth } = require('./middlewares/auth');
+const { auth } = require('./middlewares/auth');
 // const errorHandler = require('./middlewares/errorHandler');
-const { login, createUser } = require('./controllers/users');
-// const { regexpUrl } = require('./utils/constants');
 // const NotFoundError = require('./errors/notFoundError');
 // const { requestLogger, errorLogger } = require('./middlewares/logger');
 
@@ -28,23 +26,11 @@ app.use(cookieParser());
 
 mongoose.connect('mongodb://127.0.0.1:27017/bitfilmsdb');
 
-app.post('/signin', celebrate({
-  body: Joi.object().keys({
-    email: Joi.string().required().email(),
-    password: Joi.string().required(),
-  }),
-}), login);
-
-app.post('/signup', celebrate({
-  body: Joi.object().keys({
-    name: Joi.string().required().min(2).max(30),
-    email: Joi.string().required().email(),
-    password: Joi.string().required(),
-  }).unknown(true),
-}), createUser);
-
-app.use('/users', require('./routes/users'));
-app.use('/movies', require('./routes/movies'));
+app.use('/signup', require('./routes/signup'));
+app.use('/signin', require('./routes/signin'));
+app.use('/users', auth, require('./routes/users'));
+app.use('/movies', auth, require('./routes/movies'));
+app.use('/signout', auth, require('./routes/signout'));
 
 // app.use('*', (_req, _res, next) => next(notFoundError));
 
