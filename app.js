@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 
-const { PORT = 3000, DATABASE } = process.env;
+const { PORT = 4000, DATABASE } = process.env;
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const { errors } = require('celebrate');
@@ -22,7 +22,7 @@ const limiter = rateLimit({
 });
 
 app.use(helmet());
-app.use(cors({ origin: ['http://localhost:3000'], credentials: true }));
+app.use(cors({ origin: ['http://localhost:4001'], credentials: true }));
 app.use(limiter);
 app.use(bodyParser.json());
 app.use(cookieParser());
