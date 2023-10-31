@@ -1,70 +1,91 @@
 const Movie = require('../models/movie');
-const ForbiddenError = require('../errors/forbiddenError');
-const NotFoundError = require('../errors/notFoundError');
-const InternalServerError = require('../errors/InternalServerError');
-const BadRequestError = require('../errors/badRequestError');
-const {
-  forbiddenMessage,
-  notFoundMessage,
-  internalServerMessage,
-  badRequestMessage,
-} = require('../utils/constants');
+const BadRequestError = require('../errors/BadRequestError');
+const AccessDeniedError = require('../errors/AccessDeniedError');
+const NotFoundError = require('../errors/NotFoundError');
 
-const forbiddenError = new ForbiddenError(forbiddenMessage);
-const notFoundError = new NotFoundError(notFoundMessage);
-const internalServerError = new InternalServerError(internalServerMessage);
-const badRequestError = new BadRequestError(badRequestMessage);
-
-function getMovies(req, res, next) {
-  const currentUser = req.user._id;
-
-  return Movie.find({ currentUser })
-    .then((movies) => res.send(movies))
-    .catch(() => next(internalServerError));
-}
-
-function createMovie(req, res, next) {
-  const owner = req.user._id;
-
-  return Movie.create({ owner, ...req.body })
-    .then((movie) => res.status(201).send(movie))
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        next(badRequestError);
-        return;
-      }
-      next(internalServerError);
-    });
-}
-
-function deleteMovie(req, res, next) {
-  const { movieId } = req.params;
-  const currentUser = req.user._id;
-
-  return Movie.findById(movieId)
-    .then((movie) => {
-      const movieOwner = movie.owner.toString();
-
-      if (!movie) {
-        return next(notFoundError);
-      }
-
-      if (movieOwner !== currentUser) {
-        return next(forbiddenError);
-      }
-
-      return Movie.deleteOne({ _id: movieId })
-        .then((movieData) => res.send(movieData));
+// Получение массива фильмов
+const getMovies = (req, res, next) => {
+  Movie.find({ owner: req.user._id })
+    .then((movies) => {
+      res.send(movies);
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        next(badRequestError);
-        return;
+    .catch(next);
+};
+
+// Создание нового фильма в базе данных mongoDB
+// для текущего пользователя.
+// Формирую в теле запроса нужные поля для заполнения.
+const createMovie = (req, res, next) => {
+  const {
+    country,
+    director,
+    duration,
+    year,
+    description,
+    image,
+    trailerLink,
+    thumbnail,
+    movieId,
+    nameRU,
+    nameEN,
+  } = req.body;
+  Movie.create({
+    country,
+    director,
+    duration,
+    year,
+    description,
+    image,
+    trailerLink,
+    thumbnail,
+    movieId,
+    nameRU,
+    nameEN,
+    owner: req.user._id,
+  })
+    .then((movie) => res.send(movie))
+    .catch((e) => {
+      if (e.name === 'ValidationError') {
+        next(
+          new BadRequestError(
+            'Переданы некорректные данные при создании карточки фильма',
+          ),
+        );
+      } else {
+        next(e);
       }
-      next(internalServerError);
     });
-}
+};
+
+// Удаление фильма
+const deleteMovie = (req, res, next) => {
+  Movie.findById(req.params.movieId)
+    .orFail(() => {
+      throw new NotFoundError('Фильм с указанным _id не найден');
+    })
+    .then((movie) => {
+      const owner = movie.owner.toString();
+      if (req.user._id === owner) {
+        Movie.deleteOne(movie)
+          .then(() => {
+            res.send(movie);
+          })
+          .catch(next);
+      } else {
+        throw new AccessDeniedError('Невозможно удалить фильм');
+      }
+    })
+    .catch((e) => {
+      if (e.name === 'CastError') {
+        next(new BadRequestError('Переданы некорректные данные для удаления фильма'));
+      } else {
+        next(e);
+      }
+    });
+};
 
 module.exports = {
-  getMovies, createMovie, deleteMovie,
+  getMovies,
+  createMovie,
+  deleteMovie,
 };

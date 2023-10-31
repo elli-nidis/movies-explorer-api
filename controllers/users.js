@@ -1,106 +1,113 @@
-const { NODE_ENV, JWT_SECRET } = process.env;
-
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const BadRequestError = require('../errors/BadRequestError');
+const ConflictError = require('../errors/ConflictError');
+const NotFoundError = require('../errors/NotFoundError');
 
-const UnauthorizedError = require('../errors/unauthorizedError');
-const NotFoundError = require('../errors/notFoundError');
-const InternalServerError = require('../errors/InternalServerError');
-const BadRequestError = require('../errors/badRequestError');
-const ConflictError = require('../errors/conflictError');
-const {
-  unauthorizedMessage,
-  notFoundMessage,
-  internalServerMessage,
-  badRequestMessage,
-  conflictMessage,
-} = require('../utils/constants');
+const { NODE_ENV, AUTHENTICATION_KEY } = process.env;
+const { SECRET_KEY_DEV, CREATED_CODE } = require('../utils/constants');
 
-const unauthorizedError = new UnauthorizedError(unauthorizedMessage);
-const notFoundError = new NotFoundError(notFoundMessage);
-const internalServerError = new InternalServerError(internalServerMessage);
-const badRequestError = new BadRequestError(badRequestMessage);
-const conflictError = new ConflictError(conflictMessage);
-
-function getCurrentUser(req, res, next) {
-  const { _id } = req.user;
-
-  User.findOne({ _id })
-    .then((user) => {
-      res.send({
-        name: user.name, email: user.email,
-      });
-    })
-    .catch(() => next(internalServerError));
-}
-
-function createUser(req, res, next) {
-  const {
-    name, email, password,
-  } = req.body;
-
-  return bcrypt.hash(password, 10)
+// Регистрирую в приложении нового пользователя
+const registrationUser = (req, res, next) => {
+  bcrypt
+    .hash(req.body.password, 10)
     .then((hash) => User.create({
-      name, email, password: hash,
+      email: req.body.email,
+      password: hash,
+      name: req.body.name,
     }))
-    .then((user) => res.status(201).send({
-      name: user.name,
+    .then((user) => res.status(CREATED_CODE).send({
       email: user.email,
+      name: user.name,
+      _id: user._id,
     }))
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return next(badRequestError);
+    .catch((e) => {
+      if (e.code === 11000) {
+        next(new ConflictError('Такой пользователь уже существует'));
+      } else if (e.name === 'ValidationError') {
+        next(
+          new BadRequestError(
+            'Переданы некорректные данные при создании пользователя',
+          ),
+        );
+      } else {
+        next(e);
       }
-      if (err.code === 11000) {
-        return next(conflictError);
-      }
-      return next(internalServerError);
     });
-}
+};
 
-function updateUser(req, res, next) {
-  const { name, email } = req.body;
-  const userId = req.user._id;
-  return User.findByIdAndUpdate(userId, { name, email }, { new: true, runValidators: true })
-    .then((user) => {
-      if (!user) {
-        return next(notFoundError);
-      }
-      return res.send({ name, email });
-    })
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        return next(badRequestError);
-      }
-      return next(internalServerError);
-    });
-}
-
-function login(req, res, next) {
+// Логин пользователя
+const loginUser = (req, res, next) => {
   const { email, password } = req.body;
-
   return User.findUserByCredentials(email, password)
     .then((user) => {
+      // Создание JWT-токена
       const token = jwt.sign(
         { _id: user._id },
-        NODE_ENV === 'production' ? JWT_SECRET : 'secret-word-mutabor',
+        NODE_ENV === 'production' ? AUTHENTICATION_KEY : SECRET_KEY_DEV,
+        { expiresIn: '7d' },
       );
-      res.cookie('jwt', token, {
-        maxAge: 3600000,
-        httpOnly: true,
-        sameSite: true,
-      })
-        .send({ _id: user._id, email: user.email });
+
+      res.send({ token });
     })
-    .catch(() => {
-      next(unauthorizedError);
+    .catch(next);
+};
+
+// Получение данных пользователя
+const getUserInfo = (req, res, next) => {
+  const userId = req.user._id;
+  User.findById(userId)
+    .orFail(() => {
+      throw new NotFoundError('Пользователь по указанному _id не найден');
+    })
+    .then((user) => {
+      res.send(user);
+    })
+    .catch((e) => {
+      if (e.name === 'CastError') {
+        next(new BadRequestError('Запрашиваемый пользователь не найден'));
+      } else {
+        next(e);
+      }
     });
-}
-function logout(_req, res) {
-  res.clearCookie('jwt').send({ message: 'Осуществлен выход из профиля' });
-}
+};
+
+// Редактирование данных пользователя
+const editUserInfo = (req, res, next) => {
+  const { email, name } = req.body;
+  User.findByIdAndUpdate(
+    req.user._id,
+    { email, name },
+    {
+      new: true,
+      runValidators: true,
+    },
+  )
+    .orFail(() => {
+      throw new NotFoundError('Пользователь с указанным _id не найден');
+    })
+    .then((user) => {
+      res.send(user);
+    })
+    .catch((e) => {
+      if (e.code === 11000) {
+        next(new ConflictError('Такой пользователь уже существует'));
+      } else if (e.name === 'ValidationError') {
+        next(
+          new BadRequestError(
+            'Переданы некорректные данные при обновлении профиля',
+          ),
+        );
+      } else {
+        next(e);
+      }
+    });
+};
 
 module.exports = {
-  getCurrentUser, createUser, updateUser, login, logout,
+  registrationUser,
+  getUserInfo,
+  editUserInfo,
+  loginUser,
 };

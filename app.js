@@ -1,41 +1,46 @@
 require('dotenv').config();
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-
-const { PORT = 4000, DATABASE } = process.env;
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
+const express = require('express');
 const { errors } = require('celebrate');
-const cookieParser = require('cookie-parser');
-
-const routes = require('./routes/index');
-const errorHandler = require('./middlewares/errorHandler');
+const helmet = require('helmet');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
+const router = require('./routes/index');
+const errorHandler = require('./middlewares/errorHandler');
+const limiter = require('./middlewares/rateLimiter');
+const cors = require('./middlewares/cors');
 
+const { URL = 'mongodb://127.0.0.1:27017/bitfilmsdb' } = process.env;
+
+const { PORT = 4000 } = process.env;
 const app = express();
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-});
+mongoose
+  .connect(URL, {
+    useNewUrlParser: true,
+  })
+  .then(() => {
+    console.log('БД подключена');
+  })
+  .catch(() => {
+    console.log('Не удалось подключиться к БД');
+  });
 
-app.use(helmet());
-app.use(cors({ origin: ['http://localhost:4001'], credentials: true }));
-app.use(limiter);
-app.use(bodyParser.json());
-app.use(cookieParser());
+app.use(express.json());
+
+app.use(cors);
+
 app.use(requestLogger);
 
-mongoose.connect(DATABASE);
+app.use(helmet());
 
-app.use('/', routes);
+app.use(limiter);
+
+app.use(router);
 
 app.use(errorLogger);
+
 app.use(errors());
+
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Приложение работает на ${PORT} порте`);
-});
+app.listen(PORT);

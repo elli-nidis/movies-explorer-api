@@ -5,6 +5,6 @@
 
 ## Ссылки на проект
 
-IP 158.160.47.223
+IP 158.160.127.85
 
 Backend https://api.mov.nomoredomainsicu.ru/

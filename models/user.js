@@ -1,48 +1,50 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const validator = require('validator');
+const isEmail = require('validator/lib/isEmail');
+const UnauthorizedError = require('../errors/UnauthorizedError');
 
-const BadRequestError = require('../errors/badRequestError');
-const { badRequestMessage } = require('../utils/constants');
+const { Schema } = mongoose;
 
-const badRequestError = new BadRequestError(badRequestMessage);
-
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    minlength: 2,
-    maxlength: 30,
-    required: true,
-  },
+const userSchema = Schema({
   email: {
     type: String,
     required: true,
-    validate: {
-      validator: validator.isEmail,
-      message: 'Неправильно указана электронная почта',
-    },
     unique: true,
+    validate: {
+      validator: (v) => isEmail(v),
+      message: 'Неправильный формат электронной почты',
+    },
   },
   password: {
     type: String,
     required: true,
     select: false,
   },
+  name: {
+    type: String,
+    required: true,
+    minlength: [2, 'Минимальная длина поля "name" - 2'],
+    maxlength: [30, 'Максимальная длина поля "name" - 30'],
+  },
 });
 
-userSchema.statics.findUserByCredentials = function (email, password) {
-  return this.findOne({ email }).select('+password')
+userSchema.statics.findUserByCredentials = function findOne(email, password) {
+  return this.findOne({ email })
+    .select('+password')
     .then((user) => {
       if (!user) {
-        return Promise.reject(badRequestError);
+        return Promise.reject(
+          new UnauthorizedError('Неправильные почта или пароль'),
+        );
       }
-      return bcrypt.compare(password, user.password)
-        .then((matched) => {
-          if (!matched) {
-            return Promise.reject(badRequestError);
-          }
-          return user;
-        });
+      return bcrypt.compare(password, user.password).then((matched) => {
+        if (!matched) {
+          return Promise.reject(
+            new UnauthorizedError('Неправильные почта или пароль'),
+          );
+        }
+        return user;
+      });
     });
 };
 
